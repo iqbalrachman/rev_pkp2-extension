@@ -6,7 +6,7 @@ export default defineConfig({
   // NANTI kalau domain purikencanapermai2.com udah aktif via Hostinger + file CNAME,
   // ganti site di bawah ini ke 'https://www.purikencanapermai2.com' dan HAPUS baris `base`.
   site: 'https://iqbalrachman.github.io',
-  base: '/pkp2-extension',
+  base: '/rev_pkp2-extension',
 
   integrations: [vue()],
 
