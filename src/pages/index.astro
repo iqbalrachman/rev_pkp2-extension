@@ -1,17 +1,53 @@
 ---
+import { getImage } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Navbar from '../components/Navbar.astro';
 import Hero from '../components/Hero.astro';
-import UnitList from '../components/UnitList.astro';
-import Gallery from '../components/Gallery.astro';
+import UnitFilterGrid from '../components/UnitFilterGrid.vue';
+import GalleryLightbox from '../components/GalleryLightbox.vue';
 import Footer from '../components/Footer.astro';
 import { getSiteData, findCoverImage } from '../lib/api.js';
 
-// Ini jalan di Node.js pas GitHub Actions build, BUKAN di browser visitor -
-// jadi visitor akhir nggak pernah nunggu Apps Script sama sekali, cuma
-// terima HTML+gambar yang udah jadi.
+// Semua fetch + optimasi gambar di bawah ini jalan di Node.js pas build
+// GitHub Actions - visitor akhir nggak pernah nunggu Apps Script atau
+// Google Drive sama sekali, cuma terima HTML + gambar statis yang udah jadi.
 const { content, units, gallery } = await getSiteData();
 const heroImage = findCoverImage(gallery, 'hero', 'hero');
+
+// Resolve & optimasi foto cover tiap unit SEKALI di build, baru dikirim
+// sebagai data biasa (string URL) ke Vue island - jadi Vue-nya nggak perlu
+// tau apa-apa soal Astro Image, cuma render <img> biasa.
+const unitsWithCover = await Promise.all(
+  units.map(async (unit) => {
+    const cover = findCoverImage(gallery, 'unit', unit.kode_unit);
+    let coverSrc = null;
+    if (cover) {
+      const optimized = await getImage({
+        src: cover.image_url,
+        width: 800,
+        format: 'webp',
+        quality: 72,
+        inferSize: true
+      });
+      coverSrc = optimized.src;
+    }
+    return { ...unit, coverSrc, coverCaption: cover?.caption || null };
+  })
+);
+
+// Sama buat galeri: thumbnail kecil buat grid, versi lebih besar buat lightbox.
+const galleryItems = await Promise.all(
+  gallery
+    .filter(g => g.kategori !== 'hero' && g.image_url)
+    .sort((a, b) => (a.urutan || 0) - (b.urutan || 0))
+    .map(async (item) => {
+      const [thumb, full] = await Promise.all([
+        getImage({ src: item.image_url, width: 500, format: 'webp', quality: 70, inferSize: true }),
+        getImage({ src: item.image_url, width: 1400, format: 'webp', quality: 78, inferSize: true })
+      ]);
+      return { id: item.id, caption: item.caption, thumbSrc: thumb.src, fullSrc: full.src };
+    })
+);
 ---
 
 <BaseLayout
@@ -21,7 +57,42 @@ const heroImage = findCoverImage(gallery, 'hero', 'hero');
 >
   <Navbar content={content} />
   <Hero content={content} heroImage={heroImage} />
-  <UnitList units={units} gallery={gallery} />
-  <Gallery gallery={gallery} />
+
+  <section id="unit" class="units-section">
+    <div class="container">
+      <div class="section-heading">
+        <span class="eyebrow">Pilihan Unit</span>
+        <h2>Temukan Tipe yang Sesuai</h2>
+      </div>
+      <UnitFilterGrid client:visible units={unitsWithCover} />
+    </div>
+  </section>
+
+  <section id="galeri" class="gallery-section">
+    <div class="container">
+      <div class="section-heading">
+        <span class="eyebrow">Galeri</span>
+        <h2>Rasakan Suasana Tinggal di Sini</h2>
+      </div>
+      <GalleryLightbox client:visible items={galleryItems} />
+    </div>
+  </section>
+
   <Footer content={content} />
 </BaseLayout>
+
+<style>
+  .units-section { padding-block: var(--space-xl); background: var(--color-paper); }
+  .gallery-section { padding-block: var(--space-xl); }
+  .section-heading { text-align: center; margin-bottom: var(--space-lg); }
+  .eyebrow {
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-gold);
+    margin-bottom: 6px;
+  }
+  .section-heading h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
+</style>
