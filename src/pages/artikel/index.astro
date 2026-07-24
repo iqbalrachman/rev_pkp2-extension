@@ -1,0 +1,75 @@
+---
+import { getImage } from 'astro:assets';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Navbar from '../../components/Navbar.astro';
+import Footer from '../../components/Footer.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+import { getSiteData } from '../../lib/api.js';
+
+const { content, articles } = await getSiteData();
+
+const articlesWithCover = await Promise.all(
+  articles.map(async (a) => {
+    let coverSrc = null;
+    if (a.cover_url) {
+      const optimized = await getImage({ src: a.cover_url, width: 600, format: 'webp', quality: 72, inferSize: true });
+      coverSrc = optimized.src;
+    }
+    return { ...a, coverSrc };
+  })
+);
+---
+
+<BaseLayout title={`Artikel - ${content.company_name || 'Arciv Property'}`} description="Tips, info, dan panduan seputar hunian dari Arciv Property.">
+  <Navbar content={content} />
+
+  <main class="article-list-page">
+    <div class="container">
+      <div class="section-heading">
+        <span class="eyebrow">Artikel</span>
+        <h1>Tips & Info Seputar Hunian</h1>
+      </div>
+
+      {articlesWithCover.length > 0 ? (
+        <div class="article-grid">
+          {articlesWithCover.map((a) => (
+            <ArticleCard article={a} coverSrc={a.coverSrc} />
+          ))}
+        </div>
+      ) : (
+        <p class="empty">Belum ada artikel yang terbit.</p>
+      )}
+    </div>
+  </main>
+
+  <Footer content={content} />
+</BaseLayout>
+
+<style>
+  .article-list-page {
+    padding-block: calc(var(--space-xl) + 60px) var(--space-xl);
+  }
+  .section-heading {
+    text-align: center;
+    margin-bottom: var(--space-lg);
+  }
+  .eyebrow {
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-gold);
+    margin-bottom: 6px;
+  }
+  .article-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-md);
+  }
+  .empty {
+    text-align: center;
+    color: var(--color-navy-soft);
+    padding: var(--space-lg) 0;
+  }
+</style>
