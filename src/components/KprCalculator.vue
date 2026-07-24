@@ -1,67 +1,161 @@
----
-const { items } = Astro.props; // [{ id, caption, src }]
----
+<script setup>
+import { ref, computed } from 'vue';
+import { formatRupiah } from '../lib/format.js';
 
-{items.length > 0 && (
-  <section id="progress" class="progress-section">
-    <div class="container">
-      <div class="section-heading">
-        <span class="eyebrow">Progress Pembangunan</span>
-        <h2>Pembangunan Terus Berjalan</h2>
-      </div>
+const props = defineProps({
+  defaultPrice: { type: Number, default: 900000000 }
+});
 
-      <div class="progress-grid">
-        {items.map((item) => (
-          <figure class="progress-card">
-            <img src={item.src} alt={item.caption || 'Progress pembangunan'} loading="lazy" />
-            {item.caption && <figcaption>{item.caption}</figcaption>}
-          </figure>
-        ))}
-      </div>
+const price = ref(props.defaultPrice);
+const dpPercent = ref(10);
+const rate = ref(7.5);
+const tenor = ref(15);
+
+const tenorOptions = [5, 10, 15, 20];
+
+const dpAmount = computed(() => Math.round((price.value * dpPercent.value) / 100));
+const loanAmount = computed(() => price.value - dpAmount.value);
+
+const monthlyInstallment = computed(() => {
+  const monthlyRate = rate.value / 100 / 12;
+  const n = tenor.value * 12;
+  if (monthlyRate === 0) return loanAmount.value / n;
+  const factor = Math.pow(1 + monthlyRate, n);
+  return Math.round((loanAmount.value * monthlyRate * factor) / (factor - 1));
+});
+
+const totalPayment = computed(() => monthlyInstallment.value * tenor.value * 12 + dpAmount.value);
+</script>
+
+<template>
+  <div class="kpr-card">
+    <div class="kpr-inputs">
+      <label class="field">
+        <span>Harga Properti</span>
+        <input type="number" v-model.number="price" step="1000000" />
+      </label>
+
+      <label class="field">
+        <span>Uang Muka (DP): {{ dpPercent }}%</span>
+        <input type="range" min="0" max="50" step="5" v-model.number="dpPercent" />
+      </label>
+
+      <label class="field">
+        <span>Suku Bunga: {{ rate }}% / tahun</span>
+        <input type="range" min="3" max="15" step="0.25" v-model.number="rate" />
+      </label>
+
+      <label class="field">
+        <span>Tenor</span>
+        <select v-model.number="tenor">
+          <option v-for="t in tenorOptions" :key="t" :value="t">{{ t }} tahun</option>
+        </select>
+      </label>
     </div>
-  </section>
-)}
 
-<style>
-  .progress-section {
-    padding-block: var(--space-xl);
+    <div class="kpr-result">
+      <div class="result-main">
+        <span>Estimasi Cicilan / Bulan</span>
+        <strong>{{ formatRupiah(monthlyInstallment) }}</strong>
+      </div>
+      <div class="result-details">
+        <div>
+          <span>Uang Muka</span>
+          <strong>{{ formatRupiah(dpAmount) }}</strong>
+        </div>
+        <div>
+          <span>Plafon Pinjaman</span>
+          <strong>{{ formatRupiah(loanAmount) }}</strong>
+        </div>
+        <div>
+          <span>Estimasi Total Bayar</span>
+          <strong>{{ formatRupiah(totalPayment) }}</strong>
+        </div>
+      </div>
+      <p class="disclaimer">
+        *Simulasi kasar, bukan penawaran resmi bank. Angka final tergantung kebijakan & penilaian bank terkait.
+      </p>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.kpr-card {
+  background: var(--color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: var(--space-lg);
+  display: grid;
+  gap: var(--space-lg);
+}
+.kpr-inputs {
+  display: grid;
+  gap: var(--space-md);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--color-navy-soft);
+  font-weight: 500;
+}
+.field input[type='number'],
+.field select {
+  padding: 10px 12px;
+  border: 1px solid var(--color-paper);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--color-navy);
+}
+.field input[type='range'] {
+  accent-color: var(--color-gold);
+}
+.kpr-result {
+  border-top: 1px solid var(--color-paper);
+  padding-top: var(--space-md);
+}
+.result-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: var(--space-md);
+}
+.result-main span {
+  font-size: 0.85rem;
+  color: var(--color-navy-soft);
+}
+.result-main strong {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--color-navy);
+}
+.result-details {
+  display: grid;
+  gap: 10px;
+}
+.result-details > div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+.result-details span {
+  color: var(--color-navy-soft);
+}
+.result-details strong {
+  color: var(--color-navy);
+}
+.disclaimer {
+  font-size: 0.75rem;
+  color: var(--color-navy-soft);
+  margin-top: var(--space-md);
+}
+
+@media (min-width: 720px) {
+  .kpr-card {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
   }
-  .section-heading {
-    text-align: center;
-    margin-bottom: var(--space-lg);
-  }
-  .eyebrow {
-    display: block;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--color-gold);
-    margin-bottom: 6px;
-  }
-  .section-heading h2 {
-    font-size: clamp(1.6rem, 3vw, 2.2rem);
-  }
-  .progress-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--space-md);
-  }
-  .progress-card {
-    background: var(--color-white);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    box-shadow: var(--shadow-card);
-  }
-  .progress-card img {
-    width: 100%;
-    aspect-ratio: 16 / 10;
-    object-fit: cover;
-    display: block;
-  }
-  .progress-card figcaption {
-    padding: var(--space-sm);
-    font-size: 0.9rem;
-    color: var(--color-navy-soft);
-  }
+}
 </style>
