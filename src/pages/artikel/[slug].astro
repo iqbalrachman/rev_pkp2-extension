@@ -66,6 +66,8 @@ const jsonLd = {
   title={`${article.title} - ${content.company_name || 'Arciv Property'}`}
   description={article.title}
   ogImage={coverSrc}
+  companyName={content.company_name}
+  companyPhone={content.footer_phone}
 >
   <Navbar content={content} />
 
