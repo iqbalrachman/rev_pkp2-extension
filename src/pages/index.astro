@@ -5,6 +5,8 @@ import Navbar from '../components/Navbar.astro';
 import Hero from '../components/Hero.astro';
 import UnitFilterGrid from '../components/UnitFilterGrid.vue';
 import GalleryLightbox from '../components/GalleryLightbox.vue';
+import ProgressSection from '../components/ProgressSection.astro';
+import KprCalculator from '../components/KprCalculator.vue';
 import ArticlePreview from '../components/ArticlePreview.astro';
 import Footer from '../components/Footer.astro';
 import { getSiteData, findCoverImage } from '../lib/api.js';
@@ -49,6 +51,17 @@ const galleryItems = await Promise.all(
       return { id: item.id, caption: item.caption, thumbSrc: thumb.src, fullSrc: full.src };
     })
 );
+// Foto progress pembangunan - cukup semua foto kategori 'progress', tanpa riwayat rumit.
+const progressItems = await Promise.all(
+  gallery
+    .filter(g => g.kategori === 'progress' && g.image_url)
+    .sort((a, b) => (a.urutan || 0) - (b.urutan || 0))
+    .map(async (item) => {
+      const optimized = await getImage({ src: item.image_url, width: 700, format: 'webp', quality: 72, inferSize: true });
+      return { id: item.id, caption: item.caption, src: optimized.src };
+    })
+);
+
 // 3 artikel terbaru buat homepage - cukup resolve cover-nya aja di sini,
 // isi lengkap (body_html) baru diambil di halaman detail masing-masing.
 const articlesWithCover = await Promise.all(
@@ -91,6 +104,18 @@ const articlesWithCover = await Promise.all(
     </div>
   </section>
 
+  <ProgressSection items={progressItems} />
+
+  <section id="kpr" class="kpr-section">
+    <div class="container container-narrow">
+      <div class="section-heading">
+        <span class="eyebrow">Simulasi KPR</span>
+        <h2>Cek Estimasi Cicilan Bulanan</h2>
+      </div>
+      <KprCalculator client:visible defaultPrice={content.price_from || 900000000} />
+    </div>
+  </section>
+
   <ArticlePreview articles={articlesWithCover} />
 
   <Footer content={content} />
@@ -99,6 +124,8 @@ const articlesWithCover = await Promise.all(
 <style>
   .units-section { padding-block: var(--space-xl); background: var(--color-paper); }
   .gallery-section { padding-block: var(--space-xl); }
+  .kpr-section { padding-block: var(--space-xl); background: var(--color-paper); }
+  .container-narrow { max-width: 760px; }
   .section-heading { text-align: center; margin-bottom: var(--space-lg); }
   .eyebrow {
     display: block;
