@@ -1,6 +1,10 @@
-// Satu-satunya tempat URL Apps Script disimpan. Kalau lo redeploy Apps Script
-// dan URL /exec berubah, cukup update baris ini aja - nggak perlu obrak-abrik
-// file lain.
+// Cache in-memory - build Astro itu satu proses Node.js yang sama dipakai
+// bareng buat semua halaman (index, listing artikel, tiap halaman artikel).
+// Tanpa ini, getSiteData() bisa kepanggil belasan kali dalam 1 build =
+// belasan request ke Apps Script yang sebenernya nanya hal yang sama.
+let cachedSiteData = null;
+const articleCache = new Map();
+
 const API_URL = 'https://script.google.com/macros/s/AKfycbxphA_A0OyZsznpEwAFsKotLErEGkVtox8-g23KAojlOfxpE8wVjLnXu9l9XeP6dN8aCg/exec';
 
 /**
@@ -8,6 +12,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxphA_A0OyZsznpEwAFsKot
  * BUKAN di browser visitor) - jadi visitor akhir nggak pernah nunggu API ini.
  */
 export async function getSiteData() {
+  if (cachedSiteData) return cachedSiteData;
+
   const res = await fetch(`${API_URL}?action=all`);
   if (!res.ok) {
     throw new Error(`Gagal fetch data dari Apps Script (status ${res.status}). Cek apakah deployment masih aktif.`);
@@ -16,7 +22,24 @@ export async function getSiteData() {
   if (data.error) {
     throw new Error(`Apps Script mengembalikan error: ${data.error}`);
   }
+  cachedSiteData = data;
   return data; // { content, units, gallery, articles, generated_at }
+}
+
+/** Ambil 1 artikel lengkap (termasuk body_html dari Google Doc) by slug. */
+export async function getArticleBySlug(slug) {
+  if (articleCache.has(slug)) return articleCache.get(slug);
+
+  const res = await fetch(`${API_URL}?action=article&slug=${encodeURIComponent(slug)}`);
+  if (!res.ok) {
+    throw new Error(`Gagal fetch artikel "${slug}" (status ${res.status}).`);
+  }
+  const data = await res.json();
+  if (data.error) {
+    throw new Error(`Apps Script error untuk artikel "${slug}": ${data.error}`);
+  }
+  articleCache.set(slug, data);
+  return data;
 }
 
 /** Cari foto pertama (sesuai urutan) untuk kategori & unit_id tertentu. */
