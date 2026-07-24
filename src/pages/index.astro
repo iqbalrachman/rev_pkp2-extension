@@ -80,6 +80,8 @@ const articlesWithCover = await Promise.all(
   title={content.meta_title || content.hero_title}
   description={content.meta_description}
   ogImage={heroImage?.image_url}
+  companyName={content.company_name}
+  companyPhone={content.footer_phone}
 >
   <Navbar content={content} />
   <Hero content={content} heroImage={heroImage} />
