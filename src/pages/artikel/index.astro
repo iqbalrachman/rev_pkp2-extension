@@ -20,7 +20,12 @@ const articlesWithCover = await Promise.all(
 );
 ---
 
-<BaseLayout title={`Artikel - ${content.company_name || 'Arciv Property'}`} description="Tips, info, dan panduan seputar hunian dari Arciv Property.">
+<BaseLayout
+  title={`Artikel - ${content.company_name || 'Arciv Property'}`}
+  description="Tips, info, dan panduan seputar hunian dari Arciv Property."
+  companyName={content.company_name}
+  companyPhone={content.footer_phone}
+>
   <Navbar content={content} />
 
   <main class="article-list-page">
