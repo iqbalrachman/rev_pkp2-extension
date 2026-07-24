@@ -1,11 +1,11 @@
 ---
 import { formatDate } from '../lib/format.js';
+import { withBase } from '../lib/paths.js';
 
 const { article, coverSrc } = Astro.props;
-const base = import.meta.env.BASE_URL;
 ---
 
-<a href={`${base}artikel/${article.slug}/`} class="article-card">
+<a href={withBase(`artikel/${article.slug}/`)} class="article-card">
   <div class="article-cover">
     {coverSrc ? (
       <img src={coverSrc} alt={article.title} loading="lazy" />
