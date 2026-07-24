@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://iqbalrachman.github.io/rev_pkp2-extension/sitemap-index.xml
