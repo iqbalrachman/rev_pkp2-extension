@@ -18,6 +18,13 @@ export function buildWaLink(phoneRaw, message) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
+export function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 const STATUS_STYLE = {
   'Available': { color: 'var(--color-status-available)', label: 'Tersedia' },
   'Sold': { color: 'var(--color-status-sold)', label: 'Terjual' },
