@@ -10,6 +10,7 @@
   "dependencies": {
     "astro": "^4.16.0",
     "@astrojs/vue": "^4.5.0",
+    "@astrojs/sitemap": "^3.2.0",
     "vue": "^3.5.0",
     "@fontsource/playfair-display": "^5.1.0",
     "@fontsource/poppins": "^5.1.0"
