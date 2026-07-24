@@ -1,0 +1,180 @@
+---
+import { getImage } from 'astro:assets';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Navbar from '../../components/Navbar.astro';
+import Footer from '../../components/Footer.astro';
+import ArticleCard from '../../components/ArticleCard.astro';
+import { getSiteData, getArticleBySlug } from '../../lib/api.js';
+import { formatDate } from '../../lib/format.js';
+
+// getStaticPaths jalan sekali saat build - inilah yang bikin tiap artikel
+// jadi file HTML fisik sendiri (/artikel/judul-slug/index.html), BUKAN
+// halaman yang dirender client-side. Ini kuncinya biar Google & preview
+// share WA/Instagram bisa baca konten & OG tag masing-masing artikel.
+export async function getStaticPaths() {
+  const { articles } = await getSiteData();
+  return Promise.all(
+    articles.map(async (a) => {
+      const full = await getArticleBySlug(a.slug);
+      return { params: { slug: a.slug }, props: { article: full } };
+    })
+  );
+}
+
+const { article } = Astro.props;
+const { content, articles } = await getSiteData();
+const base = import.meta.env.BASE_URL;
+
+let coverSrc = null;
+if (article.cover_url) {
+  const optimized = await getImage({ src: article.cover_url, width: 1200, format: 'webp', quality: 75, inferSize: true });
+  coverSrc = optimized.src;
+}
+
+// Artikel terkait sederhana: artikel lain selain yang lagi dibuka, maksimal 3.
+const related = articles.filter(a => a.slug !== article.slug).slice(0, 3);
+const relatedWithCover = await Promise.all(
+  related.map(async (a) => {
+    let src = null;
+    if (a.cover_url) {
+      const opt = await getImage({ src: a.cover_url, width: 500, format: 'webp', quality: 70, inferSize: true });
+      src = opt.src;
+    }
+    return { ...a, coverSrc: src };
+  })
+);
+
+const canonicalUrl = new URL(`${base}artikel/${article.slug}/`, Astro.site).toString();
+
+// Structured data - bantu Google nampilin rich snippet (tanggal, judul,
+// gambar) langsung di hasil pencarian.
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: article.title,
+  datePublished: article.published_at,
+  image: article.cover_url ? [coverSrc] : undefined,
+  publisher: {
+    '@type': 'Organization',
+    name: content.company_name || 'Arciv Property'
+  },
+  mainEntityOfPage: canonicalUrl
+};
+---
+
+<BaseLayout
+  title={`${article.title} - ${content.company_name || 'Arciv Property'}`}
+  description={article.title}
+  ogImage={coverSrc}
+>
+  <Navbar content={content} />
+
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <article class="article-page">
+    <div class="container">
+      <a href={`${base}artikel/`} class="back-link">&larr; Semua Artikel</a>
+
+      <header class="article-header">
+        <time datetime={article.published_at}>{formatDate(article.published_at)}</time>
+        <h1>{article.title}</h1>
+      </header>
+
+      {coverSrc && (
+        <div class="article-cover">
+          <img src={coverSrc} alt={article.title} />
+        </div>
+      )}
+
+      <div class="article-content" set:html={article.body_html} />
+    </div>
+  </article>
+
+  {relatedWithCover.length > 0 && (
+    <section class="related-section">
+      <div class="container">
+        <h2>Artikel Lainnya</h2>
+        <div class="related-grid">
+          {relatedWithCover.map((a) => (
+            <ArticleCard article={a} coverSrc={a.coverSrc} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <Footer content={content} />
+</BaseLayout>
+
+<style>
+  .article-page {
+    padding-block: calc(var(--space-xl) + 60px) var(--space-lg);
+  }
+  .container {
+    max-width: 760px;
+  }
+  .back-link {
+    display: inline-block;
+    color: var(--color-navy-soft);
+    text-decoration: none;
+    font-size: 0.9rem;
+    margin-bottom: var(--space-md);
+  }
+  .article-header time {
+    color: var(--color-gold);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .article-header h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    margin-top: 8px;
+    margin-bottom: var(--space-md);
+  }
+  .article-cover {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: var(--space-lg);
+    box-shadow: var(--shadow-card);
+  }
+  .article-cover img {
+    width: 100%;
+    display: block;
+  }
+  .article-content {
+    font-size: 1.05rem;
+    line-height: 1.8;
+    color: var(--color-navy);
+  }
+  .article-content :global(h2) {
+    margin-top: var(--space-lg);
+    margin-bottom: var(--space-xs);
+    font-size: 1.4rem;
+  }
+  .article-content :global(p) {
+    margin-bottom: var(--space-sm);
+  }
+  .article-content :global(img) {
+    border-radius: var(--radius-md);
+    margin-block: var(--space-sm);
+  }
+  .article-content :global(a) {
+    color: var(--color-gold);
+  }
+
+  .related-section {
+    background: var(--color-paper);
+    padding-block: var(--space-xl);
+  }
+  .related-section h2 {
+    text-align: center;
+    font-size: 1.5rem;
+    margin-bottom: var(--space-lg);
+  }
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-md);
+  }
+</style>
