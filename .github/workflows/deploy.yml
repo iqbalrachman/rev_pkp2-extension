@@ -3,7 +3,9 @@ name: Build and Deploy
 on:
   push:
     branches: [main]
-  workflow_dispatch: {}   # biar bisa di-trigger manual dari tab Actions juga
+  workflow_dispatch: {}   # bisa di-trigger manual dari tab Actions juga
+  repository_dispatch:
+    types: [manual-publish]   # ini yang "didengerin" pas tombol di Google Sheets dipencet
 
 permissions:
   contents: read
