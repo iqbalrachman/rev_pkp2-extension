@@ -4,7 +4,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Navbar from '../../components/Navbar.astro';
 import Footer from '../../components/Footer.astro';
 import ArticleCard from '../../components/ArticleCard.astro';
-import { getSiteData, getArticleBySlug } from '../../lib/api.js';
+import RelatedUnits from '../../components/RelatedUnits.astro';
+import { getSiteData, getArticleBySlug, findCoverImage } from '../../lib/api.js';
 import { formatDate } from '../../lib/format.js';
 import { withBase } from '../../lib/paths.js';
 
@@ -14,8 +15,22 @@ import { withBase } from '../../lib/paths.js';
 // share WA/Instagram bisa baca konten & OG tag masing-masing artikel.
 export async function getStaticPaths() {
   const { articles } = await getSiteData();
+
+  // Jaring pengaman: kalau ada 2+ baris kebetulan punya slug sama (misal
+  // akibat copy-paste baris tanpa ngosongin id/slug), jangan biarin build
+  // gagal total gara-gara 1 baris data yang salah - ambil yang published_at
+  // paling baru, yang lain diabaikan. Tetap perbaiki datanya di sheet, ini
+  // cuma jaga-jaga.
+  const bySlug = new Map();
+  for (const a of articles) {
+    const existing = bySlug.get(a.slug);
+    if (!existing || new Date(a.published_at) > new Date(existing.published_at)) {
+      bySlug.set(a.slug, a);
+    }
+  }
+
   return Promise.all(
-    articles.map(async (a) => {
+    [...bySlug.values()].map(async (a) => {
       const full = await getArticleBySlug(a.slug);
       return { params: { slug: a.slug }, props: { article: full } };
     })
@@ -23,7 +38,7 @@ export async function getStaticPaths() {
 }
 
 const { article } = Astro.props;
-const { content, articles } = await getSiteData();
+const { content, articles, units, gallery } = await getSiteData();
 
 let coverSrc = null;
 if (article.cover_url) {
@@ -31,8 +46,14 @@ if (article.cover_url) {
   coverSrc = optimized.src;
 }
 
-// Artikel terkait sederhana: artikel lain selain yang lagi dibuka, maksimal 3.
-const related = articles.filter(a => a.slug !== article.slug).slice(0, 3);
+// Artikel terkait: prioritasin yang punya minimal 1 tag sama, baru fallback
+// ke artikel lain kalau nggak ada yang cocok tag-nya (biar section-nya
+// tetap ada isinya walau lo belum sempat isi tags di semua artikel).
+const otherArticles = articles.filter(a => a.slug !== article.slug);
+const tagMatches = otherArticles.filter(a =>
+  a.tags?.some(t => article.tags?.includes(t))
+);
+const related = (tagMatches.length > 0 ? tagMatches : otherArticles).slice(0, 3);
 const relatedWithCover = await Promise.all(
   related.map(async (a) => {
     let src = null;
@@ -41,6 +62,21 @@ const relatedWithCover = await Promise.all(
       src = opt.src;
     }
     return { ...a, coverSrc: src };
+  })
+);
+
+// Unit terkait - dikontrol manual lewat kolom related_units di sheet Articles,
+// bukan ditebak sistem. Ini yang jadi "jalan" dari artikel ke listing.
+const relatedUnitsList = units.filter(u => article.related_units?.includes(String(u.kode_unit).toLowerCase()));
+const relatedUnitsWithCover = await Promise.all(
+  relatedUnitsList.map(async (unit) => {
+    const cover = findCoverImage(gallery, 'unit', unit.kode_unit);
+    let coverSrc = null;
+    if (cover) {
+      const opt = await getImage({ src: cover.image_url, width: 400, format: 'webp', quality: 70, inferSize: true });
+      coverSrc = opt.src;
+    }
+    return { ...unit, coverSrc };
   })
 );
 
@@ -63,8 +99,8 @@ const jsonLd = {
 ---
 
 <BaseLayout
-  title={`${article.title} - ${content.company_name || 'Arciv Property'}`}
-  description={article.title}
+  title={article.meta_title || `${article.title} - ${content.company_name || 'Arciv Property'}`}
+  description={article.meta_description || article.title}
   ogImage={coverSrc}
   companyName={content.company_name}
   companyPhone={content.footer_phone}
@@ -89,6 +125,8 @@ const jsonLd = {
       )}
 
       <div class="article-content" set:html={article.body_html} />
+
+      <RelatedUnits units={relatedUnitsWithCover} waNumber={content.whatsapp_number} />
     </div>
   </article>
 
