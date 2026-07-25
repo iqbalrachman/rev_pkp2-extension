@@ -102,10 +102,12 @@ const jsonLd = {
   mainEntityOfPage: canonicalUrl
 };
 
-const faqJsonLd = article.faq.length > 0 ? {
+const articleFaq = article.faq || [];
+
+const faqJsonLd = articleFaq.length > 0 ? {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
-  mainEntity: article.faq.map(item => ({
+  mainEntity: articleFaq.map(item => ({
     '@type': 'Question',
     name: item.question,
     acceptedAnswer: {
@@ -147,7 +149,7 @@ const faqJsonLd = article.faq.length > 0 ? {
 
       <div class="article-content" set:html={contentHtml} />
 
-      <FaqBlock faq={article.faq} />
+      <FaqBlock faq={articleFaq} />
 
       <RelatedUnits units={relatedUnitsWithCover} waNumber={content.whatsapp_number} />
     </div>
