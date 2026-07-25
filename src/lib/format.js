@@ -18,6 +18,16 @@ export function buildWaLink(phoneRaw, message) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
+export function slugify(text) {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
 export function formatDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
