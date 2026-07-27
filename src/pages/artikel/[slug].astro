@@ -1,5 +1,4 @@
 ---
-import { getImage } from 'astro:assets';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Navbar from '../../components/Navbar.astro';
 import Footer from '../../components/Footer.astro';
@@ -9,10 +8,13 @@ import ArticleToc from '../../components/ArticleToc.astro';
 import FaqBlock from '../../components/FaqBlock.astro';
 import PillarBanner from '../../components/PillarBanner.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
-import { extractToc } from '../../lib/content.js';
+import ReadingProgress from '../../components/ReadingProgress.astro';
+import BackToTop from '../../components/BackToTop.astro';
+import { extractToc, stripLeadingH1 } from '../../lib/content.js';
 import { getSiteData, getArticleBySlug, findCoverImage } from '../../lib/api.js';
 import { formatDate } from '../../lib/format.js';
 import { withBase } from '../../lib/paths.js';
+import { safeImage } from '../../lib/image.js';
 
 // getStaticPaths jalan sekali saat build - inilah yang bikin tiap artikel
 // jadi file HTML fisik sendiri (/artikel/judul-slug/index.html), BUKAN
@@ -47,8 +49,8 @@ const { content, articles, units, gallery } = await getSiteData();
 
 let coverSrc = null;
 if (article.cover_url) {
-  const optimized = await getImage({ src: article.cover_url, width: 1200, format: 'webp', quality: 75, inferSize: true });
-  coverSrc = optimized.src;
+  const optimized = await safeImage(article.cover_url, { width: 1200, format: 'webp', quality: 75 });
+  coverSrc = optimized?.src || null;
 }
 
 // Pillar page: 1 artikel ditandain sebagai "hub" lewat Content.pillar_slug.
@@ -74,12 +76,10 @@ const related = isPillar
   : (tagMatches.length > 0 ? tagMatches : otherArticles).slice(0, 3);
 const relatedWithCover = await Promise.all(
   related.map(async (a) => {
-    let src = null;
-    if (a.cover_url) {
-      const opt = await getImage({ src: a.cover_url, width: 500, format: 'webp', quality: 70, inferSize: true });
-      src = opt.src;
-    }
-    return { ...a, coverSrc: src };
+    const opt = a.cover_url
+      ? await safeImage(a.cover_url, { width: 500, format: 'webp', quality: 70 })
+      : null;
+    return { ...a, coverSrc: opt?.src || null };
   })
 );
 
@@ -89,16 +89,14 @@ const relatedUnitsList = units.filter(u => article.related_units?.includes(Strin
 const relatedUnitsWithCover = await Promise.all(
   relatedUnitsList.map(async (unit) => {
     const cover = findCoverImage(gallery, 'unit', unit.kode_unit);
-    let coverSrc = null;
-    if (cover) {
-      const opt = await getImage({ src: cover.image_url, width: 400, format: 'webp', quality: 70, inferSize: true });
-      coverSrc = opt.src;
-    }
-    return { ...unit, coverSrc };
+    const opt = cover
+      ? await safeImage(cover.image_url, { width: 400, format: 'webp', quality: 70 })
+      : null;
+    return { ...unit, coverSrc: opt?.src || null };
   })
 );
 
-const { html: contentHtml, toc } = extractToc(article.body_html);
+const { html: contentHtml, toc } = extractToc(stripLeadingH1(article.body_html));
 
 const canonicalUrl = new URL(withBase(`artikel/${article.slug}/`), Astro.site).toString();
 
@@ -141,6 +139,7 @@ const faqJsonLd = articleFaq.length > 0 ? {
   companyPhone={content.footer_phone}
 >
   <Navbar content={content} />
+  <ReadingProgress />
 
   <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   {faqJsonLd && <script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />}
@@ -188,6 +187,8 @@ const faqJsonLd = articleFaq.length > 0 ? {
       </div>
     </section>
   )}
+
+  <BackToTop />
 
   <Footer content={content} />
 </BaseLayout>
