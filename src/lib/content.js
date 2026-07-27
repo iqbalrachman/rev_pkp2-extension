@@ -9,6 +9,25 @@ import { slugify } from './format.js';
  * yang diproses selalu berasal dari 1 sumber yang konsisten (Google Docs
  * publish-to-web), bukan HTML sembarangan dari internet.
  */
+/**
+ * Google Docs otomatis nge-tag judul dokumen (atau teks pertama yang
+ * di-style "Title"/"Heading 1") jadi <h1> pas di-publish ke web. Tapi
+ * halaman artikel kita UDAH nampilin judul sendiri (dari kolom title di
+ * sheet) sebagai <h1> di header. Kalau body_html juga bawa <h1>, jadinya
+ * ada 2 H1 dalam 1 halaman - Google nganggep itu sinyal SEO yang jelek
+ * (halaman dianggap gak punya 1 topik utama yang jelas). Ini buang H1
+ * PERTAMA doang dari body_html (asumsinya itu judul duplikat dari Doc).
+ */
+export function stripLeadingH1(html) {
+  if (!html) return html;
+  let removed = false;
+  return html.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, (match) => {
+    if (removed) return match;
+    removed = true;
+    return '';
+  });
+}
+
 export function extractToc(html) {
   if (!html) return { html, toc: [] };
 
