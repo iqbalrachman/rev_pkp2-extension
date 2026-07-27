@@ -1,79 +1,134 @@
 ---
 import { getImage } from 'astro:assets';
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import Navbar from '../../components/Navbar.astro';
-import Footer from '../../components/Footer.astro';
-import ArticleCard from '../../components/ArticleCard.astro';
-import { withBase } from '../../lib/paths.js';
-import { getSiteData } from '../../lib/api.js';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Navbar from '../components/Navbar.astro';
+import Hero from '../components/Hero.astro';
+import UnitFilterGrid from '../components/UnitFilterGrid.vue';
+import GalleryLightbox from '../components/GalleryLightbox.vue';
+import ProgressSection from '../components/ProgressSection.astro';
+import KprCalculator from '../components/KprCalculator.vue';
+import ArticlePreview from '../components/ArticlePreview.astro';
+import Footer from '../components/Footer.astro';
+import { getSiteData, findCoverImage } from '../lib/api.js';
 
-const { content, articles } = await getSiteData();
+// Semua fetch + optimasi gambar di bawah ini jalan di Node.js pas build
+// GitHub Actions - visitor akhir nggak pernah nunggu Apps Script atau
+// Google Drive sama sekali, cuma terima HTML + gambar statis yang udah jadi.
+const { content, units, gallery, articles } = await getSiteData();
+const heroImage = findCoverImage(gallery, 'hero', 'hero');
 
+// Resolve & optimasi foto cover tiap unit SEKALI di build, baru dikirim
+// sebagai data biasa (string URL) ke Vue island - jadi Vue-nya nggak perlu
+// tau apa-apa soal Astro Image, cuma render <img> biasa.
+const unitsWithCover = await Promise.all(
+  units.map(async (unit) => {
+    const cover = findCoverImage(gallery, 'unit', unit.kode_unit);
+    let coverSrc = null;
+    if (cover) {
+      const optimized = await getImage({
+        src: cover.image_url,
+        width: 800,
+        format: 'webp',
+        quality: 72,
+        inferSize: true
+      });
+      coverSrc = optimized.src;
+    }
+    return { ...unit, coverSrc, coverCaption: cover?.caption || null };
+  })
+);
+
+// Sama buat galeri: thumbnail kecil buat grid, versi lebih besar buat lightbox.
+const galleryItems = await Promise.all(
+  gallery
+    .filter(g => g.kategori !== 'hero' && g.image_url)
+    .sort((a, b) => (a.urutan || 0) - (b.urutan || 0))
+    .map(async (item) => {
+      const [thumb, full] = await Promise.all([
+        getImage({ src: item.image_url, width: 500, format: 'webp', quality: 70, inferSize: true }),
+        getImage({ src: item.image_url, width: 1400, format: 'webp', quality: 78, inferSize: true })
+      ]);
+      return { id: item.id, caption: item.caption, thumbSrc: thumb.src, fullSrc: full.src };
+    })
+);
+// Foto progress pembangunan - cukup semua foto kategori 'progress', tanpa riwayat rumit.
+const progressItems = await Promise.all(
+  gallery
+    .filter(g => g.kategori === 'progress' && g.image_url)
+    .sort((a, b) => (a.urutan || 0) - (b.urutan || 0))
+    .map(async (item) => {
+      const optimized = await getImage({ src: item.image_url, width: 700, format: 'webp', quality: 72, inferSize: true });
+      return { id: item.id, caption: item.caption, src: optimized.src };
+    })
+);
+
+// 3 artikel terbaru buat homepage - cukup resolve cover-nya aja di sini,
+// isi lengkap (body_html) baru diambil di halaman detail masing-masing.
 const articlesWithCover = await Promise.all(
-  articles.map(async (a) => {
+  articles.slice(0, 3).map(async (a) => {
     let coverSrc = null;
     if (a.cover_url) {
-      const optimized = await getImage({ src: a.cover_url, width: 600, format: 'webp', quality: 72, inferSize: true });
+      const optimized = await getImage({ src: a.cover_url, width: 500, format: 'webp', quality: 72, inferSize: true });
       coverSrc = optimized.src;
     }
     return { ...a, coverSrc };
   })
 );
-
-const pillarArticle = content.pillar_slug
-  ? articlesWithCover.find(a => a.slug === content.pillar_slug)
-  : null;
-const regularArticles = pillarArticle
-  ? articlesWithCover.filter(a => a.slug !== content.pillar_slug)
-  : articlesWithCover;
 ---
 
 <BaseLayout
-  title={`Artikel - ${content.company_name || 'Arciv Property'}`}
-  description="Tips, info, dan panduan seputar hunian dari Arciv Property."
+  title={content.meta_title || content.hero_title}
+  description={content.meta_description}
+  ogImage={heroImage?.image_url}
   companyName={content.company_name}
   companyPhone={content.footer_phone}
 >
   <Navbar content={content} />
+  <Hero content={content} heroImage={heroImage} />
 
-  <main class="article-list-page">
+  <section id="unit" class="units-section">
     <div class="container">
       <div class="section-heading">
-        <span class="eyebrow">Artikel</span>
-        <h1>Tips & Info Seputar Hunian</h1>
+        <span class="eyebrow">Pilihan Unit</span>
+        <h2>Temukan Tipe yang Sesuai</h2>
       </div>
-
-      {pillarArticle && (
-        <a href={withBase(`artikel/${pillarArticle.slug}/`)} class="pillar-card">
-          <span class="pillar-tag">📖 Panduan Utama</span>
-          {pillarArticle.coverSrc && <img src={pillarArticle.coverSrc} alt={pillarArticle.title} loading="lazy" />}
-          <h2>{pillarArticle.title}</h2>
-        </a>
-      )}
-
-      {regularArticles.length > 0 ? (
-        <div class="article-grid">
-          {regularArticles.map((a) => (
-            <ArticleCard article={a} coverSrc={a.coverSrc} />
-          ))}
-        </div>
-      ) : (
-        <p class="empty">Belum ada artikel yang terbit.</p>
-      )}
+      <UnitFilterGrid client:visible units={unitsWithCover} />
     </div>
-  </main>
+  </section>
+
+  <section id="galeri" class="gallery-section">
+    <div class="container">
+      <div class="section-heading">
+        <span class="eyebrow">Galeri</span>
+        <h2>Rasakan Suasana Tinggal di Sini</h2>
+      </div>
+      <GalleryLightbox client:visible items={galleryItems} />
+    </div>
+  </section>
+
+  <ProgressSection items={progressItems} />
+
+  <section id="kpr" class="kpr-section">
+    <div class="container container-narrow">
+      <div class="section-heading">
+        <span class="eyebrow">Simulasi KPR</span>
+        <h2>Cek Estimasi Cicilan Bulanan</h2>
+      </div>
+      <KprCalculator client:visible defaultPrice={content.price_from || 900000000} />
+    </div>
+  </section>
+
+  <ArticlePreview articles={articlesWithCover} />
 
   <Footer content={content} />
 </BaseLayout>
 
 <style>
-  .article-list-page {
-    padding-block: calc(var(--space-xl) + 60px) var(--space-xl);
-  }
-  .section-heading {
-    text-align: center;
-    margin-bottom: var(--space-lg);
-  }
+  .units-section { padding-block: var(--space-xl); background: var(--color-paper); }
+  .gallery-section { padding-block: var(--space-xl); }
+  .kpr-section { padding-block: var(--space-xl); background: var(--color-paper); }
+  .container-narrow { max-width: 760px; }
+  .section-heading { text-align: center; margin-bottom: var(--space-lg); }
   .eyebrow {
     display: block;
     text-transform: uppercase;
@@ -83,49 +138,5 @@ const regularArticles = pillarArticle
     color: var(--color-gold);
     margin-bottom: 6px;
   }
-  .pillar-card {
-    display: block;
-    position: relative;
-    background: var(--color-navy);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    text-decoration: none;
-    margin-bottom: var(--space-lg);
-    box-shadow: var(--shadow-soft);
-  }
-  .pillar-card img {
-    width: 100%;
-    aspect-ratio: 21 / 9;
-    object-fit: cover;
-    opacity: 0.5;
-  }
-  .pillar-tag {
-    position: absolute;
-    top: var(--space-sm);
-    left: var(--space-sm);
-    background: var(--color-gold);
-    color: var(--color-navy);
-    font-weight: 600;
-    font-size: 0.78rem;
-    padding: 6px 14px;
-    border-radius: 999px;
-  }
-  .pillar-card h2 {
-    position: absolute;
-    bottom: var(--space-sm);
-    left: var(--space-sm);
-    right: var(--space-sm);
-    color: var(--color-white);
-    font-size: clamp(1.2rem, 3vw, 1.8rem);
-  }
-  .article-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: var(--space-md);
-  }
-  .empty {
-    text-align: center;
-    color: var(--color-navy-soft);
-    padding: var(--space-lg) 0;
-  }
+  .section-heading h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
 </style>
