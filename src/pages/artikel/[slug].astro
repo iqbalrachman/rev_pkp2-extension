@@ -8,6 +8,7 @@ import RelatedUnits from '../../components/RelatedUnits.astro';
 import ArticleToc from '../../components/ArticleToc.astro';
 import FaqBlock from '../../components/FaqBlock.astro';
 import PillarBanner from '../../components/PillarBanner.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
 import { extractToc } from '../../lib/content.js';
 import { getSiteData, getArticleBySlug, findCoverImage } from '../../lib/api.js';
 import { formatDate } from '../../lib/format.js';
@@ -146,7 +147,11 @@ const faqJsonLd = articleFaq.length > 0 ? {
 
   <article class="article-page">
     <div class="container">
-      <a href={withBase('artikel/')} class="back-link">&larr; Semua Artikel</a>
+      <Breadcrumb items={[
+        { label: 'Home', href: withBase('') },
+        { label: 'Artikel', href: withBase('artikel/') },
+        { label: article.title }
+      ]} />
 
       <PillarBanner pillarArticle={pillarArticle} />
 
@@ -193,13 +198,6 @@ const faqJsonLd = articleFaq.length > 0 ? {
   }
   .container {
     max-width: 760px;
-  }
-  .back-link {
-    display: inline-block;
-    color: var(--color-navy-soft);
-    text-decoration: none;
-    font-size: 0.9rem;
-    margin-bottom: var(--space-md);
   }
   .article-header time {
     color: var(--color-gold);
