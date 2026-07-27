@@ -1,23 +1,19 @@
 ---
-import { Image } from 'astro:assets';
 import { formatRupiah, buildWaLink } from '../lib/format.js';
 
-const { content, heroImage } = Astro.props;
+const { content, heroImageResult } = Astro.props;
 
 const waMessage = `Halo, saya tertarik dengan ${content.hero_title || 'properti ini'}. Boleh info lebih lanjut?`;
 const waLink = buildWaLink(content.whatsapp_number, waMessage);
 ---
 
 <section class="hero">
-  {heroImage && (
-    <Image
-      src={heroImage.image_url}
-      inferSize
-      alt={heroImage.caption || content.hero_title || 'Foto cluster'}
-      widths={[640, 1024, 1600, 1920]}
+  {heroImageResult && (
+    <img
+      src={heroImageResult.src}
+      srcset={heroImageResult.srcSet?.attribute}
       sizes="100vw"
-      format="webp"
-      quality={70}
+      alt={content.hero_title || 'Foto cluster'}
       loading="eager"
       fetchpriority="high"
       class="hero-bg"
