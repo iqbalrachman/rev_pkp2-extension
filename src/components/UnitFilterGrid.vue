@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { statusStyle, formatRupiah } from '../lib/format.js';
+import { statusStyle, formatRupiah, buildWaLink } from '../lib/format.js';
 
 const props = defineProps({
-  units: { type: Array, required: true }
+  units: { type: Array, required: true },
+  waNumber: { type: String, default: '' }
 });
 
 const filters = ['Semua', 'Available', 'Ready Unit', 'Progress (Ready Stock)', 'Sold'];
@@ -16,6 +17,10 @@ const filtered = computed(() => {
 
 function chipLabel(f) {
   return f === 'Semua' ? 'Semua' : statusStyle(f).label;
+}
+
+function unitWaLink(unit) {
+  return buildWaLink(props.waNumber, `Halo, saya tertarik dengan Tipe ${unit.tipe} (${formatRupiah(unit.harga)}), boleh info lebih lanjut?`);
 }
 </script>
 
@@ -58,6 +63,15 @@ function chipLabel(f) {
         </ul>
         <div class="unit-footer">
           <span class="unit-price">{{ formatRupiah(unit.harga) }}</span>
+          <a
+            v-if="waNumber"
+            :href="unitWaLink(unit)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="unit-wa-btn"
+          >
+            Tanya via WA
+          </a>
         </div>
       </div>
     </article>
@@ -170,6 +184,20 @@ function chipLabel(f) {
   margin-top: auto;
   padding-top: 8px;
   border-top: 1px solid var(--color-paper);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.unit-wa-btn {
+  background: #25D366;
+  color: var(--color-white);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  white-space: nowrap;
 }
 .unit-price {
   font-family: var(--font-display);
