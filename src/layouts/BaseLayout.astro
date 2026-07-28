@@ -7,6 +7,7 @@ import '@fontsource/poppins/500.css';
 import '@fontsource/poppins/600.css';
 import '../styles/tokens.css';
 import { withBase } from '../lib/paths.js';
+import StickyWhatsApp from '../components/StickyWhatsApp.astro';
 
 interface Props {
   title: string;
@@ -14,6 +15,7 @@ interface Props {
   ogImage?: string;
   companyName?: string;
   companyPhone?: string;
+  waNumber?: string;
 }
 
 const {
@@ -21,7 +23,8 @@ const {
   description = 'Cluster premium di Cibubur, dekat LRT & Tol Cibubur. Rumah baru 2 lantai mulai 900 jutaan.',
   ogImage,
   companyName = 'Arciv Property',
-  companyPhone
+  companyPhone,
+  waNumber
 } = Astro.props;
 
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
@@ -63,5 +66,6 @@ const orgJsonLd = {
   </head>
   <body>
     <slot />
+    <StickyWhatsApp waNumber={waNumber} />
   </body>
 </html>
