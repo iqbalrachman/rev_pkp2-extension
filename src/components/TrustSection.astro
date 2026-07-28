@@ -1,0 +1,91 @@
+/**
+ * Menu admin, muncul tiap kali buka spreadsheet. Ini "panel kontrol"
+ * lo biar tetap gampang maintenance tapi tetap on control -
+ * gak perlu buka Apps Script editor buat hal-hal rutin.
+ */
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('⚙️ Website Tools')
+    .addItem('Isi ID yang Kosong (Units/Gallery/Articles)', 'backfillMissingIds')
+    .addItem('Cek & Perbaiki Izin Foto', 'fixAllDrivePermissions')
+    .addSeparator()
+    .addItem('Trigger Build Sekarang (skip nunggu jadwal)', 'triggerManualBuild')
+    .addToUi();
+}
+
+/**
+ * Backfill id yang kosong - jaga-jaga kalau ada baris hasil PASTE
+ * banyak data sekaligus yang lolos dari onEdit (misal karena paste
+ * dari sumber luar Google Sheets, atau import CSV).
+ */
+function backfillMissingIds() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let filled = 0;
+
+  [SHEET_NAMES.UNITS, SHEET_NAMES.GALLERY, SHEET_NAMES.ARTICLES, SHEET_NAMES.TESTIMONIALS].forEach(name => {
+    const sheet = ss.getSheetByName(name);
+    const lastRow = sheet.getLastRow();
+    for (let row = 2; row <= lastRow; row++) {
+      const idCell = sheet.getRange(row, 1);
+      const rowValues = sheet.getRange(row, 2, 1, sheet.getLastColumn() - 1).getValues()[0];
+      const hasData = rowValues.some(v => v !== '' && v !== null);
+      if (hasData && !idCell.getValue()) {
+        idCell.setValue(generateNextId(sheet));
+        filled++;
+      }
+    }
+
+    // Khusus Articles: isi slug yang kosong juga (kalau ada judul tapi slug belum ke-generate)
+    if (name === SHEET_NAMES.ARTICLES) {
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      const titleCol = headers.indexOf('title') + 1;
+      const slugCol = headers.indexOf('slug') + 1;
+      for (let row = 2; row <= lastRow; row++) {
+        const title = sheet.getRange(row, titleCol).getValue();
+        const slugCell = sheet.getRange(row, slugCol);
+        if (title && !slugCell.getValue()) {
+          slugCell.setValue(ensureUniqueSlug(sheet, slugify(title), slugCol, row));
+        }
+      }
+    }
+  });
+
+  const message = `Selesai. ${filled} id berhasil diisi.`;
+  SpreadsheetApp.getUi().alert(message);
+}
+
+/**
+ * OPSIONAL: trigger rebuild GitHub Actions instan, tanpa nunggu jadwal
+ * cron. Perlu Personal Access Token GitHub disimpan di Script Properties
+ * (Project Settings > Script Properties > key "GITHUB_TOKEN") supaya
+ * token gak ke-hardcode di kode.
+ *
+ * Setup GitHub Actions workflow perlu trigger "repository_dispatch"
+ * dengan event_type "manual-publish" (dibahas pas kita susun workflow).
+ */
+function triggerManualBuild() {
+  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
+  if (!token) {
+    SpreadsheetApp.getUi().alert('GITHUB_TOKEN belum di-setup di Script Properties.');
+    return;
+  }
+
+  const repo = 'iqbalrachman/rev_pkp2-extension';
+  const url = `https://api.github.com/repos/${repo}/dispatches`;
+
+  try {
+    UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept: 'application/vnd.github+json'
+      },
+      payload: JSON.stringify({ event_type: 'manual-publish' }),
+      muteHttpExceptions: true
+    });
+    SpreadsheetApp.getUi().alert('Build dipicu! Cek tab Actions di GitHub, biasanya jadi ~2-5 menit.');
+  } catch (e) {
+    SpreadsheetApp.getUi().alert('Gagal trigger build: ' + e.message);
+  }
+}
