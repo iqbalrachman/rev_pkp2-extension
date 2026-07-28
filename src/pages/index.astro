@@ -7,6 +7,9 @@ import GalleryLightbox from '../components/GalleryLightbox.vue';
 import ProgressSection from '../components/ProgressSection.astro';
 import KprCalculator from '../components/KprCalculator.vue';
 import ArticlePreview from '../components/ArticlePreview.astro';
+import PromoSection from '../components/PromoSection.astro';
+import FacilitiesSection from '../components/FacilitiesSection.astro';
+import TrustSection from '../components/TrustSection.astro';
 import Footer from '../components/Footer.astro';
 import { getSiteData, findCoverImage } from '../lib/api.js';
 import { safeImage } from '../lib/image.js';
@@ -14,7 +17,7 @@ import { safeImage } from '../lib/image.js';
 // Semua fetch + optimasi gambar di bawah ini jalan di Node.js pas build
 // GitHub Actions - visitor akhir nggak pernah nunggu Apps Script atau
 // Google Drive sama sekali, cuma terima HTML + gambar statis yang udah jadi.
-const { content, units, gallery, articles } = await getSiteData();
+const { content, units, gallery, articles, testimonials } = await getSiteData();
 const heroImage = findCoverImage(gallery, 'hero', 'hero');
 const heroImageResult = heroImage
   ? await safeImage(heroImage.image_url, { widths: [640, 1024, 1600, 1920], format: 'webp', quality: 70 })
@@ -94,6 +97,8 @@ const articlesWithCover = await Promise.all(
   <Navbar content={content} />
   <Hero content={content} heroImageResult={heroImageResult} availableUnits={availableUnits} totalUnits={totalUnits} />
 
+  <PromoSection content={content} />
+
   <section id="unit" class="units-section">
     <div class="container">
       <div class="section-heading">
@@ -114,7 +119,11 @@ const articlesWithCover = await Promise.all(
     </div>
   </section>
 
+  <FacilitiesSection content={content} />
+
   <ProgressSection items={progressItems} />
+
+  <TrustSection content={content} testimonials={testimonials} />
 
   <section id="kpr" class="kpr-section">
     <div class="container container-narrow">
