@@ -20,6 +20,11 @@ const heroImageResult = heroImage
   ? await safeImage(heroImage.image_url, { widths: [640, 1024, 1600, 1920], format: 'webp', quality: 70 })
   : null;
 
+// Sisa unit = yang statusnya BUKAN 'Sold'. Dihitung otomatis dari data
+// sheet, bukan angka manual - jadi selalu akurat begitu status unit diubah.
+const availableUnits = units.filter(u => u.status !== 'Sold').length;
+const totalUnits = content.total_unit || units.length;
+
 // Resolve & optimasi foto cover tiap unit SEKALI di build, baru dikirim
 // sebagai data biasa (string URL) ke Vue island - jadi Vue-nya nggak perlu
 // tau apa-apa soal Astro Image, cuma render <img> biasa. Kalau 1 foto gagal
@@ -84,9 +89,10 @@ const articlesWithCover = await Promise.all(
   ogImage={heroImageResult?.src}
   companyName={content.company_name}
   companyPhone={content.footer_phone}
+  waNumber={content.whatsapp_number}
 >
   <Navbar content={content} />
-  <Hero content={content} heroImageResult={heroImageResult} />
+  <Hero content={content} heroImageResult={heroImageResult} availableUnits={availableUnits} totalUnits={totalUnits} />
 
   <section id="unit" class="units-section">
     <div class="container">
@@ -94,7 +100,7 @@ const articlesWithCover = await Promise.all(
         <span class="eyebrow">Pilihan Unit</span>
         <h2>Temukan Tipe yang Sesuai</h2>
       </div>
-      <UnitFilterGrid client:visible units={unitsWithCover} />
+      <UnitFilterGrid client:visible units={unitsWithCover} waNumber={content.whatsapp_number} />
     </div>
   </section>
 
