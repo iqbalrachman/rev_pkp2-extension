@@ -1,91 +1,145 @@
-/**
- * Menu admin, muncul tiap kali buka spreadsheet. Ini "panel kontrol"
- * lo biar tetap gampang maintenance tapi tetap on control -
- * gak perlu buka Apps Script editor buat hal-hal rutin.
- */
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu('⚙️ Website Tools')
-    .addItem('Isi ID yang Kosong (Units/Gallery/Articles)', 'backfillMissingIds')
-    .addItem('Cek & Perbaiki Izin Foto', 'fixAllDrivePermissions')
-    .addSeparator()
-    .addItem('Trigger Build Sekarang (skip nunggu jadwal)', 'triggerManualBuild')
-    .addToUi();
-}
+---
+const { content, testimonials } = Astro.props;
 
-/**
- * Backfill id yang kosong - jaga-jaga kalau ada baris hasil PASTE
- * banyak data sekaligus yang lolos dari onEdit (misal karena paste
- * dari sumber luar Google Sheets, atau import CSV).
- */
-function backfillMissingIds() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  let filled = 0;
+const trustPoints = [content.trust_point_1, content.trust_point_2, content.trust_point_3]
+  .filter(Boolean);
+const bankPartners = content.bank_partners
+  ? String(content.bank_partners).split(',').map(b => b.trim()).filter(Boolean)
+  : [];
+---
 
-  [SHEET_NAMES.UNITS, SHEET_NAMES.GALLERY, SHEET_NAMES.ARTICLES, SHEET_NAMES.TESTIMONIALS].forEach(name => {
-    const sheet = ss.getSheetByName(name);
-    const lastRow = sheet.getLastRow();
-    for (let row = 2; row <= lastRow; row++) {
-      const idCell = sheet.getRange(row, 1);
-      const rowValues = sheet.getRange(row, 2, 1, sheet.getLastColumn() - 1).getValues()[0];
-      const hasData = rowValues.some(v => v !== '' && v !== null);
-      if (hasData && !idCell.getValue()) {
-        idCell.setValue(generateNextId(sheet));
-        filled++;
-      }
-    }
+{(trustPoints.length > 0 || testimonials.length > 0) && (
+  <section id="trust" class="trust-section">
+    <div class="container">
+      <div class="section-heading">
+        <span class="eyebrow">Kenapa Percaya Kami</span>
+        <h2>Dipercaya Ratusan Calon Pemilik Rumah</h2>
+      </div>
 
-    // Khusus Articles: isi slug yang kosong juga (kalau ada judul tapi slug belum ke-generate)
-    if (name === SHEET_NAMES.ARTICLES) {
-      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-      const titleCol = headers.indexOf('title') + 1;
-      const slugCol = headers.indexOf('slug') + 1;
-      for (let row = 2; row <= lastRow; row++) {
-        const title = sheet.getRange(row, titleCol).getValue();
-        const slugCell = sheet.getRange(row, slugCol);
-        if (title && !slugCell.getValue()) {
-          slugCell.setValue(ensureUniqueSlug(sheet, slugify(title), slugCol, row));
-        }
-      }
-    }
-  });
+      {trustPoints.length > 0 && (
+        <div class="trust-points">
+          {trustPoints.map((point) => (
+            <div class="trust-point">
+              <span class="trust-check">✓</span>
+              <span>{point}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
-  const message = `Selesai. ${filled} id berhasil diisi.`;
-  SpreadsheetApp.getUi().alert(message);
-}
+      {bankPartners.length > 0 && (
+        <div class="bank-partners">
+          <span class="bank-label">Partner KPR:</span>
+          {bankPartners.map((bank) => (
+            <span class="bank-badge">{bank}</span>
+          ))}
+        </div>
+      )}
 
-/**
- * OPSIONAL: trigger rebuild GitHub Actions instan, tanpa nunggu jadwal
- * cron. Perlu Personal Access Token GitHub disimpan di Script Properties
- * (Project Settings > Script Properties > key "GITHUB_TOKEN") supaya
- * token gak ke-hardcode di kode.
- *
- * Setup GitHub Actions workflow perlu trigger "repository_dispatch"
- * dengan event_type "manual-publish" (dibahas pas kita susun workflow).
- */
-function triggerManualBuild() {
-  const token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
-  if (!token) {
-    SpreadsheetApp.getUi().alert('GITHUB_TOKEN belum di-setup di Script Properties.');
-    return;
+      {testimonials.length > 0 && (
+        <div class="testimonial-grid">
+          {testimonials.map((t) => (
+            <div class="testimonial-card">
+              {t.rating && (
+                <div class="testimonial-rating" aria-label={`Rating ${t.rating} dari 5`}>
+                  {'★'.repeat(Number(t.rating))}{'☆'.repeat(5 - Number(t.rating))}
+                </div>
+              )}
+              <p class="testimonial-text">"{t.text}"</p>
+              <span class="testimonial-name">{t.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </section>
+)}
+
+<style>
+  .trust-section {
+    padding-block: var(--space-xl);
   }
-
-  const repo = 'iqbalrachman/rev_pkp2-extension';
-  const url = `https://api.github.com/repos/${repo}/dispatches`;
-
-  try {
-    UrlFetchApp.fetch(url, {
-      method: 'post',
-      contentType: 'application/json',
-      headers: {
-        Authorization: 'Bearer ' + token,
-        Accept: 'application/vnd.github+json'
-      },
-      payload: JSON.stringify({ event_type: 'manual-publish' }),
-      muteHttpExceptions: true
-    });
-    SpreadsheetApp.getUi().alert('Build dipicu! Cek tab Actions di GitHub, biasanya jadi ~2-5 menit.');
-  } catch (e) {
-    SpreadsheetApp.getUi().alert('Gagal trigger build: ' + e.message);
+  .section-heading {
+    text-align: center;
+    margin-bottom: var(--space-lg);
   }
-}
+  .eyebrow {
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-gold);
+    margin-bottom: 6px;
+  }
+  .section-heading h2 {
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+  }
+  .trust-points {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+  }
+  .trust-point {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--color-paper);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm);
+    font-size: 0.92rem;
+  }
+  .trust-check {
+    color: var(--color-status-available);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .bank-partners {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: var(--space-lg);
+  }
+  .bank-label {
+    font-size: 0.85rem;
+    color: var(--color-navy-soft);
+  }
+  .bank-badge {
+    background: var(--color-navy);
+    color: var(--color-white);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 999px;
+  }
+  .testimonial-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--space-md);
+  }
+  .testimonial-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: var(--space-md);
+  }
+  .testimonial-rating {
+    color: var(--color-gold);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .testimonial-text {
+    font-style: italic;
+    color: var(--color-navy-soft);
+    margin-bottom: var(--space-sm);
+    line-height: 1.6;
+  }
+  .testimonial-name {
+    font-weight: 600;
+    color: var(--color-navy);
+    font-size: 0.9rem;
+  }
+</style>
