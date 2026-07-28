@@ -1,7 +1,7 @@
 ---
 import { formatRupiah, buildWaLink } from '../lib/format.js';
 
-const { content, heroImageResult } = Astro.props;
+const { content, heroImageResult, availableUnits, totalUnits } = Astro.props;
 
 const waMessage = `Halo, saya tertarik dengan ${content.hero_title || 'properti ini'}. Boleh info lebih lanjut?`;
 const waLink = buildWaLink(content.whatsapp_number, waMessage);
@@ -23,6 +23,13 @@ const waLink = buildWaLink(content.whatsapp_number, waMessage);
 
   <div class="container hero-content">
     {content.badge_text && <span class="hero-badge">{content.badge_text}</span>}
+
+    {availableUnits !== undefined && availableUnits !== null && (
+      <div class="scarcity-badge">
+        🔥 Tersisa <strong>{availableUnits}</strong> dari {totalUnits} unit!
+      </div>
+    )}
+
 
     <h1 class="hero-title">{content.hero_title}</h1>
     {content.hero_subtitle && <p class="hero-subtitle">{content.hero_subtitle}</p>}
@@ -91,6 +98,23 @@ const waLink = buildWaLink(content.whatsapp_number, waMessage);
     padding: 6px 16px;
     border-radius: 999px;
     margin-bottom: var(--space-sm);
+  }
+  .scarcity-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #DC2626;
+    color: var(--color-white);
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 8px 18px;
+    border-radius: 999px;
+    margin-bottom: var(--space-sm);
+    animation: pulse-scarcity 2s ease-in-out infinite;
+  }
+  @keyframes pulse-scarcity {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
   }
   .hero-title {
     font-size: clamp(2.2rem, 6vw, 4rem);
