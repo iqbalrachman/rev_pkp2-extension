@@ -18,6 +18,20 @@ export function buildWaLink(phoneRaw, message) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
+export function extractYoutubeId(url) {
+  if (!url) return null;
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([\w-]{11})/,
+    /(?:youtu\.be\/)([\w-]{11})/,
+    /(?:youtube\.com\/embed\/)([\w-]{11})/
+  ];
+  for (const p of patterns) {
+    const match = url.match(p);
+    if (match) return match[1];
+  }
+  return null;
+}
+
 export function slugify(text) {
   return text
     .toString()
