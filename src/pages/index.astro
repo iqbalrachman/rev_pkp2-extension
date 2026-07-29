@@ -12,6 +12,7 @@ import FacilitiesSection from '../components/FacilitiesSection.astro';
 import TrustSection from '../components/TrustSection.astro';
 import SiteplanSection from '../components/SiteplanSection.astro';
 import VideoSection from '../components/VideoSection.astro';
+import MapsSection from '../components/MapsSection.astro';
 import Footer from '../components/Footer.astro';
 import { getSiteData, findCoverImage } from '../lib/api.js';
 import { safeImage } from '../lib/image.js';
@@ -131,6 +132,8 @@ const videoId = extractYoutubeId(content.video);
   <FacilitiesSection content={content} />
 
   <SiteplanSection imageResult={siteplanResult} />
+
+  <MapsSection content={content} />
 
   <VideoSection videoId={videoId} />
 
