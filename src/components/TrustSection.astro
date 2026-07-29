@@ -1,10 +1,10 @@
 ---
 const { content, testimonials } = Astro.props;
 
-const trustPoints = [content.trust_point_1, content.trust_point_2, content.trust_point_3]
+const trustPoints = [content.trust_points_1, content.trust_points_2, content.trust_points_3]
   .filter(Boolean);
-const bankPartners = content.bank_partners
-  ? String(content.bank_partners).split(',').map(b => b.trim()).filter(Boolean)
+const bankPartners = content.bank_partner
+  ? String(content.bank_partner).split(',').map(b => b.trim()).filter(Boolean)
   : [];
 ---
 
