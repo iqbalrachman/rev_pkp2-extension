@@ -1,8 +1,8 @@
 ---
 const { content } = Astro.props;
 
-const facilities = content.facilities
-  ? String(content.facilities).split(',').map(f => f.trim()).filter(Boolean)
+const facilities = content.fasilitas
+  ? String(content.fasilitas).split(',').map(f => f.trim()).filter(Boolean)
   : [];
 
 // Icon dipilih otomatis berdasar kata kunci di label - jadi kalau lo mau
