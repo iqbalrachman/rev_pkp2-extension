@@ -1,9 +1,14 @@
 ---
 const { content } = Astro.props;
 
-const promoItems = content.promo_items
-  ? String(content.promo_items).split(',').map(p => p.trim()).filter(Boolean)
-  : [];
+// Dikumpulin dari semua key yang polanya promo_items_N (promo_items_1,
+// promo_items_2, dst) - jadi berapa pun jumlahnya lo isi di sheet, otomatis
+// kebaca semua tanpa perlu ubah kode.
+const promoItems = Object.keys(content)
+  .filter((k) => /^promo_items_\d+$/.test(k))
+  .sort()
+  .map((k) => content[k])
+  .filter(Boolean);
 
 // Promo otomatis nongol/hilang sendiri sesuai tanggal di sheet Content -
 // gak perlu lo matiin manual pas promo abis, dan gak perlu nyalain manual
