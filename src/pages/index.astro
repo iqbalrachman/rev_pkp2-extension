@@ -10,9 +10,12 @@ import ArticlePreview from '../components/ArticlePreview.astro';
 import PromoSection from '../components/PromoSection.astro';
 import FacilitiesSection from '../components/FacilitiesSection.astro';
 import TrustSection from '../components/TrustSection.astro';
+import SiteplanSection from '../components/SiteplanSection.astro';
+import VideoSection from '../components/VideoSection.astro';
 import Footer from '../components/Footer.astro';
 import { getSiteData, findCoverImage } from '../lib/api.js';
 import { safeImage } from '../lib/image.js';
+import { extractYoutubeId } from '../lib/format.js';
 
 // Semua fetch + optimasi gambar di bawah ini jalan di Node.js pas build
 // GitHub Actions - visitor akhir nggak pernah nunggu Apps Script atau
@@ -84,6 +87,12 @@ const articlesWithCover = await Promise.all(
     return { ...a, coverSrc: optimized?.src || null };
   })
 );
+
+const siteplanResult = content.siteplan
+  ? await safeImage(content.siteplan, { width: 1400, format: 'webp', quality: 78 })
+  : null;
+
+const videoId = extractYoutubeId(content.video);
 ---
 
 <BaseLayout
@@ -120,6 +129,10 @@ const articlesWithCover = await Promise.all(
   </section>
 
   <FacilitiesSection content={content} />
+
+  <SiteplanSection imageResult={siteplanResult} />
+
+  <VideoSection videoId={videoId} />
 
   <ProgressSection items={progressItems} />
 
