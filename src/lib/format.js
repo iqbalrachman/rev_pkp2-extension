@@ -42,6 +42,22 @@ export function slugify(text) {
     .replace(/-+/g, '-');
 }
 
+/**
+ * Rumus anuitas standar. Dipakai bareng oleh KprCalculator.vue dan fitur
+ * compare unit - sengaja 1 fungsi bersama biar kalau nanti asumsi bunga
+ * berubah, cukup diubah di 1 tempat, gak perlu inget update di 2 file beda.
+ */
+export function estimateMonthlyInstallment(price, { dpPercent = 0, ratePercent = 7.5, tenorYears = 20 } = {}) {
+  if (!price) return 0;
+  const dpAmount = Math.round((price * dpPercent) / 100);
+  const loanAmount = price - dpAmount;
+  const monthlyRate = ratePercent / 100 / 12;
+  const n = tenorYears * 12;
+  if (monthlyRate === 0) return Math.round(loanAmount / n);
+  const factor = Math.pow(1 + monthlyRate, n);
+  return Math.round((loanAmount * monthlyRate * factor) / (factor - 1));
+}
+
 export function formatDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
