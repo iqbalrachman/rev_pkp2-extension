@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { formatRupiah } from '../lib/format.js';
+import { formatRupiah, estimateMonthlyInstallment } from '../lib/format.js';
 
 const props = defineProps({
   defaultPrice: { type: Number, default: 900000000 }
@@ -16,13 +16,13 @@ const tenorOptions = [5, 10, 15, 20];
 const dpAmount = computed(() => Math.round((price.value * dpPercent.value) / 100));
 const loanAmount = computed(() => price.value - dpAmount.value);
 
-const monthlyInstallment = computed(() => {
-  const monthlyRate = rate.value / 100 / 12;
-  const n = tenor.value * 12;
-  if (monthlyRate === 0) return loanAmount.value / n;
-  const factor = Math.pow(1 + monthlyRate, n);
-  return Math.round((loanAmount.value * monthlyRate * factor) / (factor - 1));
-});
+const monthlyInstallment = computed(() =>
+  estimateMonthlyInstallment(price.value, {
+    dpPercent: dpPercent.value,
+    ratePercent: rate.value,
+    tenorYears: tenor.value
+  })
+);
 
 const totalPayment = computed(() => monthlyInstallment.value * tenor.value * 12 + dpAmount.value);
 </script>
