@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://iqbalrachman.github.io/rev_pkp2-extension/sitemap-index.xml
+Sitemap: https://purikencanapermai2.com/sitemap-index.xml
